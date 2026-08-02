@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from sqlalchemy import inspect, text
 
 from backend.config import Config
 
@@ -60,4 +61,19 @@ def create_app():
         return jsonify({'status': 'ok'})
 
     return app
+
+
+def ensure_voter_schema(app: Flask) -> None:
+    """Ensure the voters table includes required migration columns."""
+    with app.app_context():
+        inspector = inspect(db.engine)
+        if not inspector.has_table("voters"):
+            return
+
+        columns = {col["name"] for col in inspector.get_columns("voters")}
+        if "has_voted" not in columns:
+            app.logger.warning("Missing voters.has_voted column detected, adding it now.")
+            with db.engine.begin() as conn:
+                conn.execute(text("ALTER TABLE voters ADD COLUMN has_voted BOOLEAN DEFAULT FALSE"))
+                app.logger.info("Added missing voters.has_voted column.")
 

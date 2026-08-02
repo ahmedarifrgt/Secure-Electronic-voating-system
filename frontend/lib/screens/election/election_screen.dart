@@ -52,22 +52,49 @@ class _ElectionScreenState extends State<ElectionScreen> {
     final loading = provider.loading;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Available Elections'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Logout',
-            onPressed: _logout,
+      backgroundColor: const Color(0xFFF5F6F9),
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            pinned: true,
+            elevation: 0,
+            backgroundColor: Palette.navyDeep,
+            expandedHeight: voter != null ? 168 : 100,
+            flexibleSpace: FlexibleSpaceBar(
+              titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+              title: const Text(
+                'Available Elections',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 17,
+                ),
+              ),
+              background: Container(
+                decoration: const BoxDecoration(gradient: Palette.navyGradient),
+                child: voter != null
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 56, 0, 0),
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: _buildVoterBanner(voter),
+                        ),
+                      )
+                    : null,
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                tooltip: 'Logout',
+                onPressed: _logout,
+              ),
+            ],
           ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Voter identity banner
-          if (voter != null) _buildVoterBanner(voter),
-          // Content
-          Expanded(child: _buildContent(elections, loading, provider)),
+          SliverFillRemaining(
+            hasScrollBody: true,
+            child: _buildContent(elections, loading, provider),
+          ),
         ],
       ),
     );
@@ -75,10 +102,12 @@ class _ElectionScreenState extends State<ElectionScreen> {
 
   Widget _buildVoterBanner(Voter voter) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-      decoration: const BoxDecoration(
-        gradient: Palette.navyGradient,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.14)),
       ),
       child: Row(
         children: [
@@ -88,6 +117,13 @@ class _ElectionScreenState extends State<ElectionScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               gradient: Palette.goldGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: Palette.gold.withOpacity(0.4),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: Center(
               child: Text(
@@ -112,6 +148,7 @@ class _ElectionScreenState extends State<ElectionScreen> {
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                   ),
+                  overflow: TextOverflow.ellipsis,
                 ),
                 if (voter.constituency != null &&
                     voter.constituency!.isNotEmpty)
@@ -121,24 +158,32 @@ class _ElectionScreenState extends State<ElectionScreen> {
                       color: Colors.white.withOpacity(0.7),
                       fontSize: 12.5,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
               ],
             ),
           ),
           if (voter.hasVoted)
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: Palette.success.withOpacity(0.85),
+                color: Palette.success.withOpacity(0.9),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text(
-                'Voted',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_rounded, color: Colors.white, size: 13),
+                  SizedBox(width: 3),
+                  Text(
+                    'Voted',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
@@ -152,7 +197,11 @@ class _ElectionScreenState extends State<ElectionScreen> {
     ElectionProvider provider,
   ) {
     if (loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Palette.navy),
+        ),
+      );
     }
 
     if (provider.error != null && elections.isEmpty) {
@@ -165,10 +214,12 @@ class _ElectionScreenState extends State<ElectionScreen> {
 
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView.builder(
+      color: Palette.navy,
+      child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: elections.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (context, index) {
           final election = elections[index];
           return ElectionCard(
@@ -195,23 +246,39 @@ class _ElectionScreenState extends State<ElectionScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off_outlined,
-                size: 56, color: Palette.inkMuted),
-            const SizedBox(height: 12),
+            Container(
+              width: 92,
+              height: 92,
+              decoration: BoxDecoration(
+                color: Palette.error.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.cloud_off_outlined,
+                  size: 42, color: Palette.error),
+            ),
+            const SizedBox(height: 20),
             const Text(
               'Unable to load elections',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Palette.inkMuted),
+              style: const TextStyle(color: Palette.inkMuted, height: 1.4),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Palette.navy,
+                elevation: 0,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh_rounded),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
               label: const Text('Retry'),
             ),
           ],
@@ -226,24 +293,32 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.how_to_vote_outlined,
-                size: 56, color: Palette.inkMuted),
-            SizedBox(height: 12),
-            Text(
-              'No active elections right now',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            Container(
+              width: 92,
+              height: 92,
+              decoration: BoxDecoration(
+                color: Palette.hairline.withOpacity(0.4),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.how_to_vote_outlined,
+                  size: 42, color: Palette.inkMuted),
             ),
-            SizedBox(height: 6),
-            Text(
+            const SizedBox(height: 20),
+            const Text(
+              'No active elections right now',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 6),
+            const Text(
               'Check back when an election is open in your constituency.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Palette.inkMuted),
+              style: TextStyle(color: Palette.inkMuted, height: 1.4),
             ),
           ],
         ),

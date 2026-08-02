@@ -6,6 +6,7 @@ import 'core/palette.dart';
 import 'providers/auth_provider.dart';
 import 'providers/dashboard_provider.dart';
 import 'providers/election_provider.dart';
+import 'providers/voter_provider.dart';
 import 'screens/splash_screen.dart';
 
 void main() {
@@ -25,6 +26,7 @@ class VotingApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider(api)..restoreSession()),
         ChangeNotifierProvider(create: (_) => ElectionProvider(api)),
         ChangeNotifierProvider(create: (_) => DashboardProvider(api)),
+        ChangeNotifierProvider(create: (_) => VoterProvider(api)),
       ],
       child: const _AppRoot(),
     );

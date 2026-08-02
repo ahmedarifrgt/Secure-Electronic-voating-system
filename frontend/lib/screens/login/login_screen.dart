@@ -6,6 +6,7 @@ import '../../core/palette.dart';
 import '../../providers/auth_provider.dart';
 import '../dashboard/admin_dashboard.dart';
 import '../election/election_screen.dart';
+import 'live_selfie_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -72,30 +73,12 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    // Capture a live selfie from the camera.
-    final XFile? photo = await _picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 80,
-      maxWidth: 1280,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => LiveSelfieScreen(nid: nid),
+      ),
     );
-    if (!mounted) return;
-
-    if (photo == null) {
-      _showError('Live image is required for verification');
-      return;
-    }
-
-    final ok = await auth.loginVoter(nid: nid, liveImage: photo);
-
-    if (!mounted) return;
-    if (ok) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const ElectionScreen()),
-      );
-    } else {
-      _showError(auth.error ?? 'Face verification failed');
-    }
   }
 
   void _showError(String message) {

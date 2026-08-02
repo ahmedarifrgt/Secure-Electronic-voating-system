@@ -76,6 +76,119 @@ class ElectionProvider extends ChangeNotifier {
     }
   }
 
+  /// Create a new election from the admin dashboard.
+  /// Returns the created election map on success, or `null` on failure.
+  Future<Map<String, dynamic>?> createElection({
+    required String name,
+    String? description,
+    String? areaCode,
+    String? constituency,
+    required String startDate,
+    required String endDate,
+    required String status,
+  }) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final data = await _api.post('/election/create', body: {
+        'name': name,
+        'description': description,
+        'area_code': areaCode,
+        'constituency': constituency,
+        'start_date': startDate,
+        'end_date': endDate,
+        'status': status,
+      }) as Map<String, dynamic>;
+      return data['election'] as Map<String, dynamic>?;
+    } catch (e) {
+      // Surface more detailed error information for debugging (network/CORS/403/etc.)
+      // Also print to console so it appears in browser/IDE logs.
+      // Keep the friendly message as well but include raw exception text.
+      try {
+        // ignore: avoid_print
+        print('createElection error: $e');
+      } catch (_) {}
+      final friendly = ApiClient.friendlyMessage(e);
+      _error = '$friendly (${e.toString()})';
+      return null;
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Publish an election (set status=Active).
+  Future<bool> publishElection(int electionId) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _api.post('/election/publish/$electionId');
+      return true;
+    } catch (e) {
+      _error = ApiClient.friendlyMessage(e);
+      return false;
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Add a new candidate to an election (admin).
+  Future<bool> addCandidate({
+    required int electionId,
+    required String name,
+    String? party,
+    String? symbol,
+    String? areaCode,
+    String? constituency,
+  }) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final data = await _api.post('/candidate/add', body: {
+        'election_id': electionId,
+        'name': name,
+        'party': party,
+        'symbol': symbol,
+        'area_code': areaCode,
+        'constituency': constituency,
+      }) as Map<String, dynamic>;
+      final raw = data['candidate'] as Map<String, dynamic>?;
+      if (raw != null) {
+        final created = Candidate.fromJson(raw);
+        _candidates = [..._candidates, created];
+      }
+      return true;
+    } catch (e) {
+      _error = ApiClient.friendlyMessage(e);
+      return false;
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Send a notify request for voters of an election. Returns true on success.
+  Future<bool> notifyVoters(int electionId, {String? message}) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+    try {
+      await _api.post('/election/$electionId/notify', body: message == null ? null : {'message': message});
+      return true;
+    } catch (e) {
+      _error = ApiClient.friendlyMessage(e);
+      return false;
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
   /// Cast a vote for [candidateId] in [electionId].
   Future<bool> castVote({
     required int electionId,
