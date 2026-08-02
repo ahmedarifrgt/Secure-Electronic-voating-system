@@ -1,0 +1,53 @@
+# Environment files
+.env
+.env.*
+
+# Python virtual environments
+.venv/
+.venv311/
+venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Testing and coverage
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Logs and temp files
+*.log
+*.tmp
+*.out
+*.bak
+*.swp
+*.swo
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Flutter / Dart
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.dart_tool/
+
+# Node / web artifacts
+node_modules/
+
+# Project-specific generated outputs
+backend/logs/
+reports/
+backups/
+encrypted_votes/
