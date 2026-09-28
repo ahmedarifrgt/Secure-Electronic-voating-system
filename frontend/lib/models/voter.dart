@@ -14,6 +14,7 @@ class Voter {
   final String? permanentAddress;
   final String? presentAddress;
   final String? faceImagePath;
+  final String? faceImageUrl;
   final bool registrationStatus;
   final bool eligibilityStatus;
   final bool hasVoted;
@@ -44,6 +45,7 @@ class Voter {
     this.lastLogin,
     this.updatedAt,
     this.faceImagePath,
+    this.faceImageUrl,
   });
 
   factory Voter.fromJson(Map<String, dynamic> json) {
@@ -62,6 +64,7 @@ class Voter {
       areaCode: json['area_code'] as String?,
       constituency: json['constituency'] as String?,
       faceImagePath: json['face_image_path'] as String?,
+      faceImageUrl: json['face_image_url'] as String?,
       registrationStatus: json['registration_status'] == true,
       eligibilityStatus: json['eligibility_status'] == true,
       hasVoted: json['has_voted'] == true,

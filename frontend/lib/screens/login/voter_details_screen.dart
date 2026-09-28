@@ -81,31 +81,52 @@ class VoterDetailsScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 54,
-                        height: 54,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: Palette.goldGradient,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Palette.gold.withOpacity(0.4),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            voter.initials,
-                            style: const TextStyle(
-                              color: Palette.navyDeep,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 18,
+                      if (voter.faceImagePath != null &&
+                          voter.faceImagePath!.isNotEmpty &&
+                          voter.faceImagePath!.startsWith('http'))
+                        Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Palette.gold.withOpacity(0.35),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 27,
+                            backgroundImage:
+                                NetworkImage(voter.faceImagePath!),
+                          ),
+                        )
+                      else
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: Palette.goldGradient,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Palette.gold.withOpacity(0.4),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              voter.initials,
+                              style: const TextStyle(
+                                color: Palette.navyDeep,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                              ),
                             ),
                           ),
                         ),
-                      ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
@@ -180,13 +201,55 @@ class VoterDetailsScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: Palette.hairline),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
               child: Column(
                 children: [
                   _DetailRow(
                     icon: Icons.wc_rounded,
                     label: 'Gender',
                     value: voter.gender ?? '-',
+                  ),
+                  const _RowDivider(),
+                  _DetailRow(
+                    icon: Icons.cake_outlined,
+                    label: 'Date of birth',
+                    value: voter.dob ?? '-',
+                  ),
+                  const _RowDivider(),
+                  _DetailRow(
+                    icon: Icons.person_outline,
+                    label: 'Father',
+                    value: voter.fatherName ?? '-',
+                  ),
+                  const _RowDivider(),
+                  _DetailRow(
+                    icon: Icons.person_outline,
+                    label: 'Mother',
+                    value: voter.motherName ?? '-',
+                  ),
+                  const _RowDivider(),
+                  _DetailRow(
+                    icon: Icons.phone_android,
+                    label: 'Mobile',
+                    value: voter.mobile ?? '-',
+                  ),
+                  const _RowDivider(),
+                  _DetailRow(
+                    icon: Icons.email_outlined,
+                    label: 'Email',
+                    value: voter.email ?? '-',
+                  ),
+                  const _RowDivider(),
+                  _DetailRow(
+                    icon: Icons.home_outlined,
+                    label: 'Permanent address',
+                    value: voter.permanentAddress ?? '-',
+                  ),
+                  const _RowDivider(),
+                  _DetailRow(
+                    icon: Icons.location_on_outlined,
+                    label: 'Present address',
+                    value: voter.presentAddress ?? '-',
                   ),
                   const _RowDivider(),
                   _DetailRow(
@@ -248,6 +311,10 @@ class VoterDetailsScreen extends StatelessWidget {
   }
 }
 
+/// A two-column detail row: a fixed-proportion label column on the left
+/// (with icon) and a value column on the right that wraps naturally instead
+/// of being clipped — keeps long values like addresses fully readable while
+/// every row still lines up neatly.
 class _DetailRow extends StatelessWidget {
   const _DetailRow({
     required this.label,
@@ -264,29 +331,45 @@ class _DetailRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 13),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (icon != null) ...[
-            Icon(icon, size: 17, color: Palette.inkMuted),
-            const SizedBox(width: 10),
-          ],
-          Text(
-            label,
-            style: const TextStyle(
-              color: Palette.inkMuted,
-              fontSize: 13.5,
+          // Left column — icon + label
+          Expanded(
+            flex: 4,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 16, color: Palette.inkMuted),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Palette.inkMuted,
+                      fontSize: 13.5,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const Spacer(),
-          Flexible(
+          const SizedBox(width: 16),
+          // Right column — value, wraps instead of clipping
+          Expanded(
+            flex: 6,
             child: Text(
               value,
               textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 14.5,
                 fontWeight: FontWeight.w600,
+                color: Palette.ink,
+                height: 1.35,
               ),
             ),
           ),
@@ -301,7 +384,8 @@ class _RowDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Divider(height: 1, thickness: 1, color: Palette.hairline.withOpacity(0.6));
+    return Divider(
+        height: 1, thickness: 1, color: Palette.hairline.withOpacity(0.6));
   }
 }
 
@@ -329,7 +413,9 @@ class _InfoChip extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            positive ? Icons.check_circle_rounded : Icons.remove_circle_outline,
+            positive
+                ? Icons.check_circle_rounded
+                : Icons.remove_circle_outline,
             size: 14,
             color: positive ? Palette.gold : Colors.white54,
           ),

@@ -1,6 +1,7 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
 from sqlalchemy import or_
 
+from backend.controllers.voter_registration_controller import create_voter_response, update_voter_response
 from backend.models.voter import Voter
 from backend.services.security.jwt_manager import decode_jwt_token
 
@@ -18,6 +19,15 @@ def _require_admin():
     if payload.get("role") != "admin":
         return None, (jsonify({"error": "Admin role required"}), 403)
     return payload, None
+
+
+@bp.route('/create', methods=['POST'])
+def create_voter():
+    """Admin-only: validate voter data, capture face, create voter record."""
+    payload, err = _require_admin()
+    if err:
+        return err
+    return create_voter_response()
 
 
 @bp.route('/list', methods=['GET'])
@@ -45,7 +55,7 @@ def list_voters():
 
     voters = q.order_by(Voter.voter_id.desc()).limit(200).all()
     return jsonify({
-        "voters": [v.to_public_dict() for v in voters]
+        "voters": [v.to_admin_dict() for v in voters]
     })
 
 
@@ -59,5 +69,33 @@ def get_voter_detail(voter_id):
     if not voter:
         return jsonify({"error": "Voter not found"}), 404
 
-    return jsonify({"voter": voter.to_public_dict()})
+    return jsonify({"voter": voter.to_admin_dict()})
+
+
+@bp.route('/photo/<int:voter_id>', methods=['GET'])
+def get_voter_photo(voter_id):
+    payload, err = _require_admin()
+    if err:
+        return err
+
+    voter = Voter.query.get(voter_id)
+    if not voter:
+        return jsonify({"error": "Voter not found"}), 404
+
+    if not voter.face_image_path:
+        return jsonify({"error": "Voter photo not available"}), 404
+
+    try:
+        return send_file(voter.face_image_path, mimetype='image/jpeg')
+    except FileNotFoundError:
+        return jsonify({"error": "Voter photo not found on disk"}), 404
+
+
+@bp.route('/update/<int:voter_id>', methods=['PUT'])
+def update_voter(voter_id):
+    payload, err = _require_admin()
+    if err:
+        return err
+
+    return update_voter_response(voter_id)
 

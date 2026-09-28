@@ -1,12 +1,43 @@
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/palette.dart';
 import '../../providers/auth_provider.dart';
 import '../dashboard/admin_dashboard.dart';
-import '../election/election_screen.dart';
-import 'live_selfie_screen.dart';
+import 'face_verification_screen.dart';
+
+class _AuthorProfile {
+  const _AuthorProfile({
+    required this.name,
+    required this.id,
+    required this.department,
+    required this.university,
+    required this.assetPath,
+  });
+
+  final String name;
+  final String id;
+  final String department;
+  final String university;
+  final String assetPath;
+}
+
+const List<_AuthorProfile> _authorProfiles = [
+  _AuthorProfile(
+    name: 'MD ARIF',
+    id: '666-60-04',
+    department: 'CSE',
+    university: 'Southern University Bangladesh',
+    assetPath: 'assets/author_image/arif.jpeg',
+  ),
+  _AuthorProfile(
+    name: 'MD MAINUL ISLAM',
+    id: '666-60-24',
+    department: 'CSE',
+    university: 'Southern University Bangladesh',
+    assetPath: 'assets/author_image/mainul.jpg.jpeg',
+  ),
+];
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,7 +52,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
 
   bool isAdmin = false;
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void dispose() {
@@ -76,7 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => LiveSelfieScreen(nid: nid),
+        builder: (_) => FaceVerificationScreen(nid: nid),
       ),
     );
   }
@@ -87,6 +117,154 @@ class _LoginScreenState extends State<LoginScreen> {
         content: Text(message),
         backgroundColor: Palette.error,
         behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  void _showAboutAuthors() {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Palette.gold.withValues(alpha: 0.16),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.badge_outlined,
+                        color: Palette.navy,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Text(
+                        'About Authors',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Palette.ink,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                      color: Palette.inkMuted,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Project authors and contact details',
+                  style: TextStyle(
+                    color: Palette.inkMuted.withValues(alpha: 0.9),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                for (var index = 0; index < _authorProfiles.length; index++) ...[
+                  _authorCard(_authorProfiles[index]),
+                  if (index < _authorProfiles.length - 1) const SizedBox(height: 12),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _authorCard(_AuthorProfile profile) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Palette.paper,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Palette.hairline),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              width: 88,
+              height: 108,
+              color: Colors.white,
+              child: Image.asset(
+                profile.assetPath,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) {
+                  return Container(
+                    alignment: Alignment.center,
+                    color: Palette.gold.withValues(alpha: 0.12),
+                    child: const Icon(
+                      Icons.person,
+                      size: 36,
+                      color: Palette.navy,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  profile.name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Palette.ink,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                _detailLine('ID', profile.id),
+                _detailLine('Department', profile.department),
+                _detailLine('University', profile.university),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailLine(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(
+            fontSize: 12.5,
+            color: Palette.inkMuted,
+            height: 1.35,
+          ),
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            TextSpan(text: value),
+          ],
+        ),
       ),
     );
   }
@@ -281,6 +459,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.45),
                         fontSize: 12,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      onPressed: _showAboutAuthors,
+                      icon: const Icon(Icons.groups_outlined, size: 18),
+                      label: const Text('About Authors'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Palette.goldSoft,
                       ),
                     ),
                   ],

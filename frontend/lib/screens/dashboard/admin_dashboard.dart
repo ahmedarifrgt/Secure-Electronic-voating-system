@@ -14,6 +14,8 @@ import '../reports/results_screen.dart';
 import '../dashboard/voter_list_screen.dart';
 import '../dashboard/candidate_list_screen.dart';
 import '../dashboard/add_candidate_screen.dart';
+import '../dashboard/create_voter_screen.dart';
+import '../dashboard/vote_token_verification_screen.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -505,32 +507,66 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 22, 16, 8),
+          padding: const EdgeInsets.fromLTRB(16, 22, 16, 32),
           sliver: SliverToBoxAdapter(
-            child: _SectionHeader(
-              icon: Icons.insights_rounded,
-              title: 'Overview',
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isWide = constraints.maxWidth >= 900;
+                final overview = _buildOverviewSection(stats);
+                final actionsPanel = _buildQuickActionsPanel(context);
+
+                if (isWide) {
+                  // Desktop/tablet: Quick Actions becomes a fixed left
+                  // sidebar; Overview takes the remaining width on the right.
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(width: 260, child: actionsPanel),
+                      const SizedBox(width: 24),
+                      Expanded(child: overview),
+                    ],
+                  );
+                }
+
+                // Narrow/mobile: stack, actions panel keeps its left-aligned
+                // list styling but spans full width.
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    overview,
+                    const SizedBox(height: 24),
+                    actionsPanel,
+                  ],
+                );
+              },
             ),
           ),
         ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-          sliver: SliverLayoutBuilder(
-            builder: (context, constraints) {
-              final width = constraints.crossAxisExtent;
-              final columns = width >= 900 ? 4 : (width >= 600 ? 3 : 2);
+      ],
+    );
+  }
 
-              return SliverGrid(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
-                  childAspectRatio: 1.15,
-                ),
-                delegate: SliverChildListDelegate([
-                  if (stats == null)
-                    for (int i = 0; i < 4; i++) const _ShimmerCard()
-                  else ...[
+  Widget _buildOverviewSection(DashboardStats? stats) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const _SectionHeader(
+          icon: Icons.insights_rounded,
+          title: 'Overview',
+        ),
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final columns = width >= 700 ? 4 : (width >= 460 ? 3 : 2);
+            const spacing = 14.0;
+            final itemWidth = (width - spacing * (columns - 1)) / columns;
+            const aspectRatio = 1.15;
+            final itemHeight = itemWidth / aspectRatio;
+
+            final cards = stats == null
+                ? List<Widget>.generate(4, (_) => const _ShimmerCard())
+                : <Widget>[
                     StatCard(
                       icon: Icons.people_alt_outlined,
                       value: '${stats.totalVoters}',
@@ -575,125 +611,153 @@ class _AdminDashboardState extends State<AdminDashboard> {
                       accent: Palette.warning,
                       isAlert: true,
                     ),
-                  ],
-                ]),
-              );
-            },
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          sliver: SliverToBoxAdapter(
-            child: _SectionHeader(
-              icon: Icons.bolt_rounded,
-              title: 'Quick Actions',
-            ),
-          ),
-        ),
-        // Action buttons
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
-          sliver: SliverToBoxAdapter(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                final columns = width >= 900 ? 4 : (width >= 560 ? 3 : 2);
-                final spacing = 12.0;
-                final itemWidth =
-                    (width - (spacing * (columns - 1))) / columns;
+                  ];
 
-                final actions = <_ActionSpec>[
-                  _ActionSpec(
-                    icon: Icons.verified_outlined,
-                    label: 'Verify Integrity',
-                    onTap: _onVerifyIntegrity,
-                    color: Palette.success,
-                  ),
-                  _ActionSpec(
-                    icon: Icons.publish_outlined,
-                    label: 'Publish Results',
-                    onTap: _onPublishResults,
-                    color: Palette.gold,
-                  ),
-                  _ActionSpec(
-                    icon: Icons.bar_chart_rounded,
-                    label: 'View Results',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ResultsScreen(),
-                        ),
-                      );
-                    },
-                    color: Palette.indigo,
-                  ),
-                  _ActionSpec(
-                    icon: Icons.group,
-                    label: 'Manage Voters',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (_) => const VoterListScreen()),
-                      );
-                    },
-                    color: Palette.indigo,
-                  ),
-                  _ActionSpec(
-                    icon: Icons.how_to_vote_outlined,
-                    label: 'Show Candidates',
-                    onTap: _onShowCandidates,
-                    color: Palette.indigo,
-                  ),
-                  _ActionSpec(
-                    icon: Icons.person_add,
-                    label: 'Add Candidate',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const AddCandidateScreen()),
-                      );
-                    },
-                    color: Palette.success,
-                  ),
-                  _ActionSpec(
-                    icon: Icons.add_rounded,
-                    label: 'Create Election',
-                    onTap: _onCreateElection,
-                    color: Palette.success,
-                  ),
-                  _ActionSpec(
-                    icon: Icons.refresh_rounded,
-                    label: 'Refresh Data',
-                    onTap: _loadStats,
-                    color: Palette.navy,
-                  ),
-                ];
-
-                return Wrap(
-                  spacing: spacing,
-                  runSpacing: spacing,
-                  children: actions
-                      .map(
-                        (a) => SizedBox(
-                          width: itemWidth,
-                          child: _ActionButton(
-                            icon: a.icon,
-                            label: a.label,
-                            onTap: a.onTap,
-                            color: a.color,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                );
-              },
-            ),
-          ),
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: cards
+                  .map((c) => SizedBox(
+                        width: itemWidth,
+                        height: itemHeight,
+                        child: c,
+                      ))
+                  .toList(),
+            );
+          },
         ),
       ],
     );
+  }
+
+  Widget _buildQuickActionsPanel(BuildContext context) {
+    final actions = _actionSpecs(context);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionHeader(
+            icon: Icons.bolt_rounded,
+            title: 'Quick Actions',
+          ),
+          const SizedBox(height: 4),
+          for (int i = 0; i < actions.length; i++) ...[
+            _ActionRow(
+              icon: actions[i].icon,
+              label: actions[i].label,
+              color: actions[i].color,
+              onTap: actions[i].onTap,
+            ),
+            if (i != actions.length - 1)
+              Divider(height: 1, color: Palette.hairline.withOpacity(0.6)),
+          ],
+          const SizedBox(height: 10),
+        ],
+      ),
+    );
+  }
+
+  List<_ActionSpec> _actionSpecs(BuildContext context) {
+    return [
+      _ActionSpec(
+        icon: Icons.verified_outlined,
+        label: 'Verify Integrity',
+        onTap: _onVerifyIntegrity,
+        color: Palette.success,
+      ),
+      _ActionSpec(
+        icon: Icons.confirmation_num_outlined,
+        label: 'Verify Vote Token',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const VoteTokenVerificationScreen()),
+          );
+        },
+        color: Palette.gold,
+      ),
+      _ActionSpec(
+        icon: Icons.publish_outlined,
+        label: 'Publish Results',
+        onTap: _onPublishResults,
+        color: Palette.gold,
+      ),
+      _ActionSpec(
+        icon: Icons.bar_chart_rounded,
+        label: 'View Results',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ResultsScreen()),
+          );
+        },
+        color: Palette.indigo,
+      ),
+      _ActionSpec(
+        icon: Icons.group,
+        label: 'Manage Voters',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const VoterListScreen()),
+          );
+        },
+        color: Palette.indigo,
+      ),
+      _ActionSpec(
+        icon: Icons.person_add_alt_1_rounded,
+        label: 'Create Voter',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreateVoterScreen()),
+          );
+        },
+        color: Palette.success,
+      ),
+      _ActionSpec(
+        icon: Icons.how_to_vote_outlined,
+        label: 'Show Candidates',
+        onTap: _onShowCandidates,
+        color: Palette.indigo,
+      ),
+      _ActionSpec(
+        icon: Icons.person_add,
+        label: 'Add Candidate',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddCandidateScreen()),
+          );
+        },
+        color: Palette.success,
+      ),
+      _ActionSpec(
+        icon: Icons.add_rounded,
+        label: 'Create Election',
+        onTap: _onCreateElection,
+        color: Palette.success,
+      ),
+      _ActionSpec(
+        icon: Icons.refresh_rounded,
+        label: 'Refresh Data',
+        onTap: _loadStats,
+        color: Palette.navy,
+      ),
+    ];
   }
 }
 
@@ -738,9 +802,11 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// A polished action tile for the admin dashboard.
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
+/// Left-aligned, full-width action row used inside the Quick Actions panel.
+/// Replaces the previous centered icon-grid tiles with a cleaner,
+/// professional list style (icon left, label left, chevron right).
+class _ActionRow extends StatelessWidget {
+  const _ActionRow({
     required this.icon,
     required this.label,
     required this.onTap,
@@ -755,48 +821,39 @@ class _ActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withOpacity(0.18)),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.08),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: color.withOpacity(0.12),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: color, size: 18),
               ),
-              const SizedBox(height: 10),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12.5,
-                  height: 1.2,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.left,
+                  style: const TextStyle(
+                    color: Palette.navy,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
+                  ),
                 ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: Palette.inkMuted.withOpacity(0.55),
               ),
             ],
           ),

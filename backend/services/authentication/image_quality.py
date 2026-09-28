@@ -19,24 +19,20 @@ MIN_WIDTH = 224
 MIN_HEIGHT = 224
 MIN_BRIGHTNESS = 40
 MAX_BRIGHTNESS = 220
-MIN_LAPLACIAN_VAR = 40.0
+MIN_LAPLACIAN_VAR = 22.0
 
 
 def _mock_allowed() -> bool:
-    return os.getenv("MOCK_FACE_VERIFICATION", "").lower() in ("1", "true", "yes")
+    return False
 
 
 def validate_image_quality(image_path: str) -> dict:
     """Validate image quality; returns {passed, reasons[], details}."""
-    if _mock_allowed():
-        return {"passed": True, "reasons": ["mock_mode"], "details": {}}
-
     if not image_path or not os.path.exists(image_path):
         return {"passed": False, "reasons": ["Image file not found"], "details": {}}
 
     if not HAS_CV2:
-        # Without OpenCV we can only verify the file exists
-        return {"passed": True, "reasons": ["file_exists"], "details": {}}
+        return {"passed": False, "reasons": ["OpenCV is required"], "details": {}}
 
     img = cv2.imread(image_path)
     if img is None:

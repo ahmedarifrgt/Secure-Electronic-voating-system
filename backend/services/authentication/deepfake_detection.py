@@ -25,7 +25,7 @@ DEEPFAKE_MODEL_DIR = os.getenv(
 
 
 def _mock_allowed() -> bool:
-    return os.getenv("MOCK_FACE_VERIFICATION", "").lower() in ("1", "true", "yes")
+    return False
 
 
 def _find_model():
@@ -80,9 +80,6 @@ def _heuristic_checks(image_path: str) -> dict:
 
 def check_deepfake(image_path: str) -> dict:
     """Run deepfake detection and return {passed, details, model}."""
-    if _mock_allowed():
-        return {"passed": True, "details": {"mode": "mock"}, "model": None}
-
     if not image_path or not os.path.exists(image_path):
         return {"passed": False, "details": {}, "model": None, "reason": "Image missing"}
 

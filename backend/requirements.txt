@@ -1,6 +1,8 @@
 # ---------------------------------------------------------------------------
 # Secure Electronic Voting System — Backend Dependencies
 # ---------------------------------------------------------------------------
+# NOTE: DeepFace requires a compatible Python version. Use Python 3.11 for the
+# backend environment when running face verification and DeepFace workflows.
 
 # Web framework
 Flask>=2.3.0
@@ -21,7 +23,18 @@ pycryptodome>=3.19.0
 
 # Facial verification / AI
 deepface>=0.0.75
-opencv-python-headless>=4.7.0
+# keras 3.x + deepface 0.0.100 requires tf-keras for the vgg/arcface backends.
+# Without it, `from deepface import DeepFace` can deadlock the process.
+tf-keras>=2.16.0
+tensorflow>=2.16.0
+# OpenCV with contrib (HAAR cascades + trackers) is required for the camera
+# modules. NOTE: keep it <5.0 — opencv-contrib-python 5.x wheels ship NO
+# haarcascade XML data, which breaks DeepFace's 'opencv' detector and causes
+# the identity pipeline to fall back to a non-identity descriptor.
+opencv-contrib-python>=4.8.0,<5
+# 'mtcnn' is the default DeepFace detector (DEEPFACE_DETECTOR=mtcnn): it is
+# installed, reliable, and produces real 512-dim identity embeddings. Do NOT
+# switch the default to 'opencv' on this environment (see above).
 mtcnn>=0.1.0
 gdown>=4.7.1
 pandas>=1.5.3

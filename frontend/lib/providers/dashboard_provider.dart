@@ -24,6 +24,8 @@ class DashboardProvider extends ChangeNotifier {
   VerifyResult? _verifyResult;
   ElectionResult? _publishedResult;
   bool _verifying = false;
+  bool _verifyingToken = false;
+  VoteTokenVerificationResult? _tokenVerificationResult;
 
   DashboardStats? get stats => _stats;
   List<Election> get elections => _elections;
@@ -32,6 +34,8 @@ class DashboardProvider extends ChangeNotifier {
   VerifyResult? get verifyResult => _verifyResult;
   ElectionResult? get publishedResult => _publishedResult;
   bool get verifying => _verifying;
+  bool get verifyingToken => _verifyingToken;
+  VoteTokenVerificationResult? get tokenVerificationResult => _tokenVerificationResult;
 
   /// Load dashboard stats for the admin home screen.
   Future<bool> fetchStats() async {
@@ -93,6 +97,27 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
+  /// Verify a single vote receipt token.
+  Future<bool> verifyVoteToken(String token) async {
+    _verifyingToken = true;
+    _error = null;
+    _tokenVerificationResult = null;
+    notifyListeners();
+    try {
+      final data = await _api.post('/report/verify-token', body: {
+        'token': token,
+      }) as Map<String, dynamic>;
+      _tokenVerificationResult = VoteTokenVerificationResult.fromJson(data);
+      return true;
+    } catch (e) {
+      _error = ApiClient.friendlyMessage(e);
+      return false;
+    } finally {
+      _verifyingToken = false;
+      notifyListeners();
+    }
+  }
+
   /// Publish results for an election.
   Future<bool> publishResults(int electionId) async {
     _verifying = true;
@@ -133,7 +158,7 @@ class DashboardProvider extends ChangeNotifier {
   }
 
   ElectionResult _readPublished(Map<String, dynamic> data) {
-    // The publish endpoint returns `{election_id, election_name, total_votes,
+    // The publish endpoint returns `{election_id, election_name, total_votes, 
     // turnout: {...}, results: [...]}` — ElectionResult.fromJson handles it.
     return ElectionResult.fromJson(data);
   }
@@ -148,8 +173,8 @@ class DashboardProvider extends ChangeNotifier {
     _elections = const [];
     _verifyResult = null;
     _publishedResult = null;
+    _tokenVerificationResult = null;
     _error = null;
     notifyListeners();
   }
 }
-

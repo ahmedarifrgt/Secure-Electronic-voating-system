@@ -87,3 +87,50 @@ class VerifyResult {
   }
 }
 
+class VoteTokenVerificationResult {
+  final bool found;
+  final bool valid;
+  final String token;
+  final int? voteId;
+  final int? electionId;
+  final int? candidateId;
+  final int? voterId;
+  final String? timestamp;
+  final bool isVerified;
+  final List<String> reasons;
+  final String? message;
+
+  const VoteTokenVerificationResult({
+    required this.found,
+    required this.valid,
+    required this.token,
+    this.voteId,
+    this.electionId,
+    this.candidateId,
+    this.voterId,
+    this.timestamp,
+    this.isVerified = false,
+    this.reasons = const [],
+    this.message,
+  });
+
+  factory VoteTokenVerificationResult.fromJson(Map<String, dynamic> json) {
+    return VoteTokenVerificationResult(
+      found: json['found'] as bool? ?? false,
+      valid: json['valid'] as bool? ?? false,
+      token: json['token'] as String? ?? '',
+      voteId: json['vote_id'] as int?,
+      electionId: json['election_id'] as int?,
+      candidateId: json['candidate_id'] as int?,
+      voterId: json['voter_id'] as int?,
+      timestamp: json['timestamp'] as String?,
+      isVerified: json['is_verified'] as bool? ?? false,
+      reasons: (json['reasons'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      message: json['message'] as String?,
+    );
+  }
+}
+

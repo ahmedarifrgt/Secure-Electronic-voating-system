@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/api_client.dart';
+import '../models/face_verification_result.dart';
 import '../models/voter.dart';
 
 /// Holds authentication state for both voters and admins.
@@ -24,12 +25,14 @@ class AuthProvider extends ChangeNotifier {
   String? _token;
   String? _role;
   Voter? _voter;
+  FaceVerificationResult? _lastVerification;
   bool _loading = false;
   String? _error;
 
   String? get token => _token;
   String? get role => _role;
   Voter? get voter => _voter;
+  FaceVerificationResult? get lastVerification => _lastVerification;
   bool get loading => _loading;
   String? get error => _error;
   bool get isAuthenticated => _token != null && _token!.isNotEmpty;
@@ -56,13 +59,19 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Voter login: NID + live selfie image captured from the camera.
+  /// Voter login: NID + live webcam frame captured for face verification.
+  ///
+  /// Returns `true` when the face matched and a JWT was issued. On failure,
+  /// [lastVerification] holds the detailed pipeline result (score, distance,
+  /// per-stage breakdown) returned by the backend.
   Future<bool> loginVoter({
     required String nid,
     XFile? liveImage,
+    List<XFile> extraImages = const [],
   }) async {
     _loading = true;
     _error = null;
+    _lastVerification = null;
     notifyListeners();
 
     try {
@@ -80,11 +89,26 @@ class AuthProvider extends ChangeNotifier {
         body['live_image_b64'] = liveImageB64;
       }
 
+      if (extraImages.isNotEmpty) {
+        final extraFrames = <String>[];
+        for (final frame in extraImages) {
+          final bytes = await frame.readAsBytes();
+          extraFrames.add(base64Encode(bytes));
+        }
+        body['extra_frames'] = extraFrames;
+      }
+
       final data = await _api.post('/auth/login', body: body) as Map<String, dynamic>;
+
+      // Capture verification details (present on both success and 403)
+      final verificationJson = data['verification'];
+      if (verificationJson is Map<String, dynamic>) {
+        _lastVerification = FaceVerificationResult.fromJson(verificationJson);
+      }
 
       final token = data['token'] as String?;
       if (token == null) {
-        _error = 'Login failed: no token returned';
+        _error = data['error'] as String? ?? 'Login failed: no token returned';
         return false;
       }
 
@@ -99,6 +123,15 @@ class AuthProvider extends ChangeNotifier {
 
       await _persist();
       return true;
+    } on ApiException catch (e) {
+      // A 403 face-verification failure carries a `verification` payload.
+      final data = e.data;
+      if (data is Map<String, dynamic> && data['verification'] is Map<String, dynamic>) {
+        _lastVerification =
+            FaceVerificationResult.fromJson(data['verification'] as Map<String, dynamic>);
+      }
+      _error = e.message;
+      return false;
     } catch (e) {
       _error = ApiClient.friendlyMessage(e);
       return false;

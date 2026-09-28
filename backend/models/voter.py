@@ -28,21 +28,12 @@ class Voter(db.Model):
     updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
 
     def to_public_dict(self):
-        """Return a safe representation without sensitive fields."""
+        """Return a minimal representation safe for authenticated voters."""
         return {
             'voter_id': self.voter_id,
             'nid': self.nid,
             'full_name': self.full_name,
-            'face_image_path': self.face_image_path,
-            'father_name': self.father_name,
-            'mother_name': self.mother_name,
-            'dob': self.dob.isoformat() if self.dob else None,
             'gender': self.gender,
-            'mobile': self.mobile,
-            'email': self.email,
-            'permanent_address': self.permanent_address,
-            'present_address': self.present_address,
-            'area_code': self.area_code,
             'constituency': self.constituency,
             'registration_status': self.registration_status,
             'eligibility_status': self.eligibility_status,
@@ -52,6 +43,23 @@ class Voter(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
+
+    def to_admin_dict(self):
+        """Return a full record for authenticated admins."""
+        data = self.to_public_dict()
+        data.update({
+            'face_image_path': self.face_image_path,
+            'face_image_url': f"/voter/photo/{self.voter_id}" if self.face_image_path else None,
+            'father_name': self.father_name,
+            'mother_name': self.mother_name,
+            'dob': self.dob.isoformat() if self.dob else None,
+            'mobile': self.mobile,
+            'email': self.email,
+            'permanent_address': self.permanent_address,
+            'present_address': self.present_address,
+            'area_code': self.area_code,
+        })
+        return data
 
     def __repr__(self):
         return f"<Voter {self.voter_id} {self.nid} {self.full_name}>"

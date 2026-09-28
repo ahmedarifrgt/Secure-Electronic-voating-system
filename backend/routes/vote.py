@@ -2,6 +2,7 @@ import os
 import base64
 
 from flask import Blueprint, request, jsonify
+from sqlalchemy.exc import IntegrityError
 
 from backend.app import db
 from backend.models.vote import Vote
@@ -89,14 +90,19 @@ def cast_vote():
         iv=iv.hex(),
         token=token,
     )
-    db.session.add(vote)
 
-    # --- Mark voter as voted ---
-    voter = db.session.get(Voter, voter_id)
-    if voter:
-        voter.has_voted = True
-
-    db.session.commit()
+    try:
+        voter = db.session.get(Voter, voter_id)
+        if voter:
+            voter.has_voted = True
+        db.session.add(vote)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Voter has already voted in this election"}), 409
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"error": f"Failed to cast vote: {exc}"}), 500
 
     # --- Create audit log ---
     log_audit("voter", voter_id, "cast_vote",

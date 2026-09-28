@@ -6,6 +6,9 @@ available; otherwise falls back to heuristic checks driven by config.
 """
 import os
 
+from backend.config import Config
+from backend.services.authentication.opencv_utils import find_haar_cascade_path
+
 HAS_CV2 = False
 try:
     import cv2
@@ -13,16 +16,19 @@ try:
 except Exception:
     HAS_CV2 = False
 
+# Non-blocking DeepFace access. The installed deepface stack can deadlock the
+# process under `from deepface import DeepFace`, so we never import it at
+# module scope — use `_deepface()` to obtain the module lazily.
+from backend.services.authentication._deepface_loader import (
+    deepface as _deepface,
+    _SENTINEL,
+)
+
 HAS_DEEPFACE = False
-try:
-    from deepface import DeepFace  # type: ignore
-    HAS_DEEPFACE = True
-except Exception:
-    HAS_DEEPFACE = False
 
 
 def _mock_allowed() -> bool:
-    return os.getenv("MOCK_FACE_VERIFICATION", "").lower() in ("1", "true", "yes")
+    return False
 
 
 def detect_faces(image_path: str):
@@ -30,35 +36,49 @@ def detect_faces(image_path: str):
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Image not found: {image_path}")
 
-    if HAS_DEEPFACE:
+    # Haar detection is much faster than invoking DeepFace for every frame.
+    # DeepFace is still required later for the actual identity embedding.
+    if HAS_CV2:
         try:
-            faces = DeepFace.detectFace(
-                img_path=image_path,
-                detector_backend="mtcnn",
-                enforce_detection=False,
-            )
-            if isinstance(faces, list):
-                return [tuple(getattr(f, "bbox", (0, 0, 0, 0))) for f in faces]
-            # DeepFace returns single ndarray when one face
-            return [(0, 0, 0, 0)] if faces is not None else []
+            cascade_path = find_haar_cascade_path(cv2)
+            cascade = cv2.CascadeClassifier(cascade_path)
+            if not cascade.empty():
+                img = cv2.imread(image_path)
+                if img is not None:
+                    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                    rects = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+                    if len(rects) == 0:
+                        rects = cascade.detectMultiScale(gray, scaleFactor=1.15, minNeighbors=3)
+                    if len(rects) > 0:
+                        return [tuple(map(int, r)) for r in rects]
         except Exception:
             pass
 
-    if HAS_CV2:
-        cascade_path = os.path.join(
-            os.path.dirname(cv2.__file__), "data", "haarcascade_frontalface_default.xml"
-        )
-        if os.path.exists(cascade_path):
-            cascade = cv2.CascadeClassifier(cascade_path)
-            img = cv2.imread(image_path)
-            if img is not None:
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                rects = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
-                return [tuple(map(int, r)) for r in rects]
+    DeepFace = _deepface()
+    if DeepFace is not _SENTINEL:
+        try:
+            detector_backend = getattr(Config, "DEEPFACE_DETECTOR", "mtcnn")
+            detected = DeepFace.extract_faces(
+                img_path=image_path,
+                detector_backend=detector_backend,
+                enforce_detection=True,
+                align=True,
+            )
+            faces = []
+            for item in detected or []:
+                region = item.get("facial_area") if isinstance(item, dict) else None
+                if isinstance(region, dict):
+                    faces.append((
+                        int(region.get("x", 0)),
+                        int(region.get("y", 0)),
+                        int(region.get("w", 0)),
+                        int(region.get("h", 0)),
+                    ))
+            if faces:
+                return faces
+        except Exception:
+            pass
 
-    # No detector available — in mock mode assume one face
-    if _mock_allowed():
-        return [(0, 0, 0, 0)]
     raise RuntimeError("No face detector backend available")
 
 
@@ -88,4 +108,3 @@ def check_face_tracking(image_path: str) -> dict:
     if passed:
         return {"passed": True, "details": details}
     return {"passed": False, "details": details, "reason": "Expected exactly one face"}
-

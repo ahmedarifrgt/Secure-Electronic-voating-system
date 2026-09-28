@@ -22,6 +22,8 @@ class ApiClient {
   /// The current JWT token, e.g. from [AuthProvider].
   String? authToken;
 
+  String get apiBaseUrl => baseUrl;
+
   /// Convenience `true` when a token is set.
   bool get isAuthenticated => authToken != null && authToken!.isNotEmpty;
 

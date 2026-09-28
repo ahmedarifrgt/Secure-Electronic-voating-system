@@ -14,8 +14,16 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    # Enable CORS for frontend web requests
-    CORS(app)
+    # Enable CORS for frontend web requests.
+    # The Flutter web client sends authenticated JSON requests with
+    # Authorization headers, so we must explicitly allow those headers and
+    # the methods used by the admin election/candidate flows.
+    CORS(
+        app,
+        resources={r"/*": {"origins": "*"}},
+        allow_headers=["Content-Type", "Authorization", "Accept"],
+        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    )
 
     # Initialize extensions
     db.init_app(app)
@@ -29,6 +37,14 @@ def create_app():
     from backend.models.face_log import FaceLog
     from backend.models.security_log import SecurityLog
     from backend.models.audit_log import AuditLog
+
+    # Create any missing tables on startup. The project ships without an
+    # applied migration history in some environments, so this keeps the app
+    # from failing with 500s when a required table such as `candidates` is
+    # absent in the target database.
+    with app.app_context():
+        db.create_all()
+        ensure_voter_schema(app)
 
     # Register blueprints
     from backend.routes import auth

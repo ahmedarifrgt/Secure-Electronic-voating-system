@@ -1,3 +1,5 @@
+import re
+
 from flask import Blueprint, request, jsonify
 
 from backend.app import db
@@ -58,6 +60,78 @@ def verify_votes():
         "verified_votes": verified_count,
         "failed_votes": len(failed),
         "failed_details": failed,
+    })
+
+
+@bp.route("/verify-token", methods=["POST"])
+def verify_vote_token():
+    """Admin verification for a single vote receipt token.
+
+    The token is the anonymous receipt shown to the voter after casting.
+    This endpoint resolves the token to the stored vote and checks the vote
+    integrity so admins can confirm a receipt without exposing voter identity
+    in the UI.
+    """
+    payload, err = _require_admin()
+    if err:
+        return err
+
+    data = request.json or {}
+    token = str(data.get("token") or "").strip()
+    if not token:
+        return jsonify({"error": "token is required"}), 400
+    if not re.fullmatch(r"[0-9a-fA-F]{64}", token):
+        return jsonify({"error": "Invalid token format"}), 400
+
+    vote = Vote.query.filter_by(token=token).first()
+    if not vote:
+        log_audit(
+            "admin",
+            None,
+            "verify_vote_token",
+            details={"token": token, "found": False},
+            ip_address=_client_ip(),
+        )
+        return jsonify({
+            "found": False,
+            "valid": False,
+            "token": token,
+            "message": "No vote found for this token",
+        })
+
+    integrity = check_vote_integrity(vote)
+    if integrity["valid"] and not vote.is_verified:
+        vote.is_verified = True
+        db.session.commit()
+    elif not integrity["valid"] and vote.is_verified:
+        vote.is_verified = False
+        db.session.commit()
+
+    log_audit(
+        "admin",
+        None,
+        "verify_vote_token",
+        details={
+            "token": token,
+            "found": True,
+            "vote_id": vote.vote_id,
+            "election_id": vote.election_id,
+            "valid": integrity["valid"],
+        },
+        ip_address=_client_ip(),
+    )
+
+    return jsonify({
+        "found": True,
+        "valid": integrity["valid"],
+        "token": vote.token,
+        "vote_id": vote.vote_id,
+        "election_id": vote.election_id,
+        "candidate_id": vote.candidate_id,
+        "voter_id": vote.voter_id,
+        "timestamp": vote.timestamp.isoformat() if vote.timestamp else None,
+        "is_verified": vote.is_verified,
+        "reasons": integrity.get("reasons", []),
     })
 
 

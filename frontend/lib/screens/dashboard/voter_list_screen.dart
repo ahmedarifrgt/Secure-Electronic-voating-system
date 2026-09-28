@@ -5,6 +5,7 @@ import '../../core/palette.dart';
 import '../../models/voter.dart';
 import '../../providers/voter_provider.dart';
 import '../../providers/election_provider.dart';
+import 'edit_voter_screen.dart';
 import 'voter_detail_screen.dart';
 
 class VoterListScreen extends StatefulWidget {
@@ -60,6 +61,9 @@ class _VoterListScreenState extends State<VoterListScreen> {
               icon: const Icon(Icons.campaign_outlined),
               tooltip: 'Notify voters',
               onPressed: () async {
+                final eprov = context.read<ElectionProvider>();
+                final messenger = ScaffoldMessenger.of(context);
+                final electionId = widget.electionId!;
                 final msg = await showDialog<String>(
                   context: context,
                   builder: (ctx) {
@@ -79,13 +83,12 @@ class _VoterListScreenState extends State<VoterListScreen> {
                 );
                 if (!mounted) return;
                 if (msg == null) return;
-                final eprov = context.read<ElectionProvider>();
-                final ok = await eprov.notifyVoters(widget.electionId!, message: msg.isEmpty ? null : msg);
+                final ok = await eprov.notifyVoters(electionId, message: msg.isEmpty ? null : msg);
                 if (!mounted) return;
                 if (ok) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notification queued')));
+                  messenger.showSnackBar(const SnackBar(content: Text('Notification queued')));
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(eprov.error ?? 'Failed to notify')));
+                  messenger.showSnackBar(SnackBar(content: Text(eprov.error ?? 'Failed to notify')));
                 }
               },
             ),
@@ -134,25 +137,40 @@ class _VoterListScreenState extends State<VoterListScreen> {
                     return ListTile(
                       title: Text(voter.fullName ?? 'Unknown'),
                       subtitle: Text('ID: ${voter.voterId ?? '-'} · NID: ${voter.nid ?? '-'}'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () async {
-                        final ok = await context.read<VoterProvider>().fetchVoterDetail(voter.voterId ?? 0);
-                        if (!mounted) return;
-                        if (ok) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const VoterDetailScreen(),
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(context.read<VoterProvider>().error ?? 'Failed to load voter details.'),
-                              backgroundColor: Palette.error,
-                            ),
-                          );
-                        }
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined),
+                            tooltip: 'Edit voter',
+                            onPressed: () async {
+                              final voterProvider = context.read<VoterProvider>();
+                              final electionId = widget.electionId;
+                              final query = _searchController.text.trim();
+                              final updated = await Navigator.push<Voter>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => EditVoterScreen(voter: voter),
+                                ),
+                              );
+                              if (!mounted || updated == null) return;
+                              if (electionId != null) {
+                                await voterProvider.fetchVotersForElection(electionId, query: query);
+                              } else {
+                                await voterProvider.fetchVoters(query: query);
+                              }
+                            },
+                          ),
+                          const Icon(Icons.chevron_right),
+                        ],
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => VoterDetailScreen(voter: voter),
+                          ),
+                        );
                       },
                     );
                   },

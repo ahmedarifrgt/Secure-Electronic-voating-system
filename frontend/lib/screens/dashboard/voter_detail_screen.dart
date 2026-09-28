@@ -2,18 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/palette.dart';
-import '../../models/voter.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/voter_provider.dart';
 
 class VoterDetailScreen extends StatelessWidget {
-  const VoterDetailScreen({super.key});
+  const VoterDetailScreen({super.key, this.voter});
+
+  final dynamic voter;
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<VoterProvider>();
-    final voter = provider.selectedVoter;
+    final auth = context.watch<AuthProvider>();
+    final apiBaseUrl = provider.apiBaseUrl;
+    final displayedVoter = voter ?? provider.selectedVoter;
 
-    if (voter == null) {
+    if (displayedVoter == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Voter Details')),
         body: Center(child: Text(provider.error ?? 'No voter selected.')),
@@ -33,51 +37,98 @@ class VoterDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      voter.fullName ?? 'Voter',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                displayedVoter.fullName ?? 'Voter',
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 8),
+                              Text('NID: ${displayedVoter.nid ?? '-'}'),
+                              const SizedBox(height: 6),
+                              Text('Voter ID: ${displayedVoter.voterId ?? '-'}'),
+                              const SizedBox(height: 6),
+                              Text('Account status: ${displayedVoter.accountStatus ?? '-'}'),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        if ((displayedVoter.faceImageUrl ?? displayedVoter.faceImagePath ?? '').isNotEmpty)
+                          _PhotoThumbnail(
+                            imageUrl: _photoUrl(displayedVoter, apiBaseUrl),
+                            authToken: auth.token,
+                          ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    if (voter.faceImagePath != null && voter.faceImagePath!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Builder(builder: (_) {
-                          final path = voter.faceImagePath!;
-                          if (path.startsWith('http')) {
-                            return Image.network(path, height: 120, fit: BoxFit.cover);
-                          }
-                          return Text('Image path: $path');
-                        }),
-                      ),
-                    Text('NID: ${voter.nid ?? '-'}'),
-                    const SizedBox(height: 6),
-                    Text('Voter ID: ${voter.voterId ?? '-'}'),
-                    const SizedBox(height: 6),
-                    Text('Account status: ${voter.accountStatus ?? '-'}'),
                   ],
                 ),
               ),
             ),
             const SizedBox(height: 16),
-            if ((voter.permanentAddress ?? '').isNotEmpty)
-              _DetailRow(label: 'Permanent address', value: voter.permanentAddress ?? '-'),
-            if ((voter.presentAddress ?? '').isNotEmpty)
-              _DetailRow(label: 'Present address', value: voter.presentAddress ?? '-'),
-            _DetailRow(label: 'Gender', value: voter.gender ?? '-'),
-            _DetailRow(label: 'Date of birth', value: voter.dob ?? '-'),
-            _DetailRow(label: 'Father name', value: voter.fatherName ?? '-'),
-            _DetailRow(label: 'Mother name', value: voter.motherName ?? '-'),
-            _DetailRow(label: 'Mobile', value: voter.mobile ?? '-'),
-            _DetailRow(label: 'Email', value: voter.email ?? '-'),
-            _DetailRow(label: 'Area code', value: voter.areaCode ?? '-'),
-            _DetailRow(label: 'Constituency', value: voter.constituency ?? '-'),
-            _DetailRow(label: 'Registered', value: voter.registrationStatus ? 'Yes' : 'No'),
-            _DetailRow(label: 'Eligible', value: voter.eligibilityStatus ? 'Yes' : 'No'),
-            _DetailRow(label: 'Has voted', value: voter.hasVoted ? 'Yes' : 'No'),
-            _DetailRow(label: 'Created', value: voter.createdAt ?? '-'),
-            _DetailRow(label: 'Last login', value: voter.lastLogin ?? '-'),
-            _DetailRow(label: 'Updated', value: voter.updatedAt ?? '-'),
+            if ((displayedVoter.permanentAddress ?? '').isNotEmpty)
+              _DetailRow(label: 'Permanent address', value: displayedVoter.permanentAddress ?? '-'),
+            if ((displayedVoter.presentAddress ?? '').isNotEmpty)
+              _DetailRow(label: 'Present address', value: displayedVoter.presentAddress ?? '-'),
+            _DetailRow(label: 'Gender', value: displayedVoter.gender ?? '-'),
+            _DetailRow(label: 'Date of birth', value: displayedVoter.dob ?? '-'),
+            _DetailRow(label: 'Father name', value: displayedVoter.fatherName ?? '-'),
+            _DetailRow(label: 'Mother name', value: displayedVoter.motherName ?? '-'),
+            _DetailRow(label: 'Mobile', value: displayedVoter.mobile ?? '-'),
+            _DetailRow(label: 'Email', value: displayedVoter.email ?? '-'),
+            _DetailRow(label: 'Area code', value: displayedVoter.areaCode ?? '-'),
+            _DetailRow(label: 'Constituency', value: displayedVoter.constituency ?? '-'),
+            _DetailRow(label: 'Registered', value: displayedVoter.registrationStatus ? 'Yes' : 'No'),
+            _DetailRow(label: 'Eligible', value: displayedVoter.eligibilityStatus ? 'Yes' : 'No'),
+            _DetailRow(label: 'Has voted', value: displayedVoter.hasVoted ? 'Yes' : 'No'),
+            _DetailRow(label: 'Created', value: displayedVoter.createdAt ?? '-'),
+            _DetailRow(label: 'Last login', value: displayedVoter.lastLogin ?? '-'),
+            _DetailRow(label: 'Updated', value: displayedVoter.updatedAt ?? '-'),
           ],
+        ),
+      ),
+    );
+  }
+
+  String _photoUrl(dynamic voter, String apiBaseUrl) {
+    final explicitUrl = voter.faceImageUrl;
+    if (explicitUrl is String && explicitUrl.isNotEmpty) {
+      return explicitUrl.startsWith('http') ? explicitUrl : '$apiBaseUrl$explicitUrl';
+    }
+    final fallbackPath = voter.faceImagePath;
+    if (fallbackPath is String && fallbackPath.startsWith('http')) {
+      return fallbackPath;
+    }
+    final voterId = voter.voterId;
+    return '$apiBaseUrl/voter/photo/$voterId';
+  }
+}
+
+class _PhotoThumbnail extends StatelessWidget {
+  const _PhotoThumbnail({required this.imageUrl, required this.authToken});
+
+  final String imageUrl;
+  final String? authToken;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: 88,
+        height: 88,
+        color: Colors.black12,
+        child: Image.network(
+          imageUrl,
+          fit: BoxFit.cover,
+          headers: authToken == null ? null : {'Authorization': 'Bearer $authToken'},
+          errorBuilder: (_, __, ___) => const Center(
+            child: Icon(Icons.person, size: 36, color: Colors.black45),
+          ),
         ),
       ),
     );
@@ -100,7 +151,7 @@ class _DetailRow extends StatelessWidget {
           Expanded(
             flex: 3,
             child: Text(
-              '$label',
+              label,
               style: const TextStyle(color: Palette.inkMuted, fontSize: 14),
             ),
           ),

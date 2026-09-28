@@ -51,3 +51,12 @@ backend/logs/
 reports/
 backups/
 encrypted_votes/
+
+# Downloaded DeepFace models and temporary camera captures
+backend/tmp/deepface/
+backend/tmp/live_*.jpg
+
+# Biometric and personal images (keep local; do not commit)
+datasets/registered_faces/
+datasets/author_image/
+frontend/assets/author_image/

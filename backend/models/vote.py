@@ -3,6 +3,10 @@ from backend import db
 
 class Vote(db.Model):
     __tablename__ = "votes"
+    __table_args__ = (
+        db.UniqueConstraint("voter_id", "election_id", name="uq_voter_election"),
+    )
+
     vote_id = db.Column(db.Integer, primary_key=True)
     election_id = db.Column(db.Integer, nullable=False)
     voter_id = db.Column(db.Integer, nullable=False)
@@ -11,7 +15,7 @@ class Vote(db.Model):
     hash = db.Column(db.String(64), nullable=False)
     signature = db.Column(db.Text, nullable=False)
     iv = db.Column(db.String(64), nullable=False)
-    token = db.Column(db.String(128), unique=True, nullable=False)
+    token = db.Column(db.String(64), unique=True, nullable=False)
     is_verified = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, server_default=db.func.now())
 

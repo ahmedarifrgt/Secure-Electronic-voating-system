@@ -37,5 +37,20 @@ void main() {
     expect(find.text('Voter'), findsOneWidget);
     expect(find.text('Admin'), findsOneWidget);
   });
+
+  testWidgets('Login screen has about authors action', (WidgetTester tester) async {
+    final api = ApiClient();
+    await tester.pumpWidget(
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider(api)),
+        ],
+        child: const MaterialApp(home: LoginScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('About Authors'), findsOneWidget);
+  });
 }
 
