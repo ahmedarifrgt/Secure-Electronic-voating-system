@@ -60,3 +60,6 @@ backend/tmp/live_*.jpg
 datasets/registered_faces/
 datasets/author_image/
 frontend/assets/author_image/
+
+# RSA key pairs are generated locally; never commit private keys or machine-specific keys
+backend/keys/*.pem
